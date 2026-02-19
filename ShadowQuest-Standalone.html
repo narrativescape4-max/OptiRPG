@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <title>Shadow Quest RPG</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            touch-action: none;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            touch-action: none;
+        }
+
+        .screen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            color: #fff;
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px #fff;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .btn {
+            background: #fff;
+            color: #000;
+            border: 3px solid #fff;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            margin: 10px;
+            font-weight: bold;
+            transition: all 0.2s;
+            touch-action: manipulation;
+        }
+
+        .btn:active {
+            background: #000;
+            color: #fff;
+            transform: scale(0.95);
+        }
+
+        .stats {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            font-size: 14px;
+            line-height: 1.6;
+            text-shadow: 2px 2px 4px #000;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 12px;
+            border: 2px solid #fff;
+            z-index: 100;
+            font-weight: bold;
+        }
+
+        .upgrade-list {
+            max-width: 400px;
+            width: 90%;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .upgrade-item {
+            background: #111;
+            border: 2px solid #fff;
+            padding: 15px;
+            margin: 10px 0;
+            transition: all 0.2s;
+        }
+
+        .upgrade-item:active {
+            background: #222;
+        }
+
+        .upgrade-item h3 {
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .upgrade-item p {
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid #fff;
+            color: #fff;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+            font-weight: bold;
+        }
+
+        .control-btn:active {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .instruction-text {
+            max-width: 400px;
+            text-align: left;
+            line-height: 2;
+            font-size: 1.1em;
+        }
+
+        .instruction-text p {
+            margin: 10px 0;
+        }
+
+        /* Loading indicator */
+        .loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5em;
+            z-index: 2000;
+        }
+    </style>
+</head>
+<body>
+    <!-- Start Screen -->
+    <div id="startScreen" class="screen active">
+        <h1>⚔️ SHADOW QUEST ⚔️</h1>
+        <p style="margin-bottom: 30px; font-size: 1.2em;">Dungeon Crawler RPG</p>
+        <button class="btn" onclick="startGame()">START GAME</button>
+        <button class="btn" onclick="showInstructions()">HOW TO PLAY</button>
+        <p style="margin-top: 30px; opacity: 0.6; font-size: 0.9em;">v1.0 | Lightweight RPG</p>
+    </div>
+
+    <!-- Instructions Screen -->
+    <div id="instructionsScreen" class="screen">
+        <h1>HOW TO PLAY</h1>
+        <div class="instruction-text">
+            <p>⚔️ <strong>COMBAT</strong><br>Attack enemies by moving into them</p>
+            <p>🎯 <strong>OBJECTIVE</strong><br>Find stairs to advance levels</p>
+            <p>💰 <strong>COLLECT</strong><br>Gather gold and health items</p>
+            <p>📈 <strong>LEVEL UP</strong><br>Gain XP and choose upgrades</p>
+            <p>🎮 <strong>CONTROLS</strong><br>Swipe or use arrow buttons</p>
+            <p>⚠️ <strong>SURVIVE</strong><br>Each floor gets harder!</p>
+        </div>
+        <button class="btn" onclick="hideInstructions()">BACK</button>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="gameScreen" style="display: none;">
+        <div class="stats" id="stats"></div>
+        <canvas id="gameCanvas"></canvas>
+        <div class="controls">
+            <button class="control-btn" ontouchstart="handleControl('left')" ontouchend="stopControl()" onmousedown="handleControl('left')" onmouseup="stopControl()">←</button>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <button class="control-btn" ontouchstart="handleControl('up')" ontouchend="stopControl()" onmousedown="handleControl('up')" onmouseup="stopControl()">↑</button>
+                <button class="control-btn" ontouchstart="handleControl('down')" ontouchend="stopControl()" onmousedown="handleControl('down')" onmouseup="stopControl()">↓</button>
+            </div>
+            <button class="control-btn" ontouchstart="handleControl('right')" ontouchend="stopControl()" onmousedown="handleControl('right')" onmouseup="stopControl()">→</button>
+        </div>
+    </div>
+
+    <!-- Upgrade Screen -->
+    <div id="upgradeScreen" class="screen">
+        <h1>LEVEL UP!</h1>
+        <p style="margin-bottom: 20px; font-size: 1.2em;">Choose your upgrade:</p>
+        <div class="upgrade-list" id="upgradeList"></div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOverScreen" class="screen">
+        <h1>💀 GAME OVER 💀</h1>
+        <p id="finalStats" style="margin: 30px 0; font-size: 1.3em; line-height: 2;"></p>
+        <button class="btn" onclick="location.reload()">PLAY AGAIN</button>
+    </div>
+
+    <script>
+        // Prevent scrolling and zooming
+        document.addEventListener('touchmove', function(e) {
+            if (e.target.tagName !== 'BUTTON') {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        });
+
+        // Game Configuration
+        const config = {
+            tileSize: 32,
+            gridWidth: 11,
+            gridHeight: 18
+        };
+
+        // Game State
+        let game = {
+            player: null,
+            enemies: [],
+            items: [],
+            level: 1,
+            gold: 0,
+            xp: 0,
+            turns: 0,
+            grid: [],
+            stairs: null,
+            currentControl: null,
+            controlInterval: null
+        };
+
+        // Player Class
+        class Player {
+            constructor() {
+                this.x = 5;
+                this.y = 16;
+                this.hp = 100;
+                this.maxHp = 100;
+                this.attack = 10;
+                this.defense = 5;
+                this.level = 1;
+                this.xpToNextLevel = 100;
+                this.gold = 0;
+            }
+
+            move(dx, dy) {
+                const newX = this.x + dx;
+                const newY = this.y + dy;
+
+                if (newX < 0 || newX >= config.gridWidth || newY < 0 || newY >= config.gridHeight) {
+                    return false;
+                }
+
+                if (game.grid[newY][newX] === 1) {
+                    return false;
+                }
+
+                const enemy = game.enemies.find(e => e.x === newX && e.y === newY && e.hp > 0);
+                if (enemy) {
+                    this.attackEnemy(enemy);
+                    return true;
+                }
+
+                if (game.stairs && newX === game.stairs.x && newY === game.stairs.y) {
+                    nextLevel();
+                    return true;
+                }
+
+                const itemIndex = game.items.findIndex(i => i.x === newX && i.y === newY);
+                if (itemIndex !== -1) {
+                    this.collectItem(game.items[itemIndex]);
+                    game.items.splice(itemIndex, 1);
+                }
+
+                this.x = newX;
+                this.y = newY;
+                return true;
+            }
+
+            attackEnemy(enemy) {
+                const damage = Math.max(1, this.attack - enemy.defense + Math.floor(Math.random() * 5));
+                enemy.hp -= damage;
+                
+                if (enemy.hp <= 0) {
+                    this.gainXp(enemy.xp);
+                    this.gold += enemy.gold;
+                    game.gold += enemy.gold;
+                } else {
+                    const counterDamage = Math.max(1, enemy.attack - this.defense + Math.floor(Math.random() * 3));
+                    this.hp -= counterDamage;
+                    
+                    if (this.hp <= 0) {
+                        gameOver();
+                    }
+                }
+            }
+
+            gainXp(amount) {
+                game.xp += amount;
+                
+                while (game.xp >= this.xpToNextLevel) {
+                    game.xp -= this.xpToNextLevel;
+                    this.levelUp();
+                }
+            }
+
+            levelUp() {
+                this.level++;
+                this.xpToNextLevel = Math.floor(this.xpToNextLevel * 1.5);
+                showUpgradeScreen();
+            }
+
+            collectItem(item) {
+                if (item.type === 'gold') {
+                    this.gold += item.value;
+                    game.gold += item.value;
+                } else if (item.type === 'health') {
+                    this.hp = Math.min(this.maxHp, this.hp + item.value);
+                }
+            }
+
+            applyUpgrade(upgrade) {
+                switch(upgrade) {
+                    case 'health':
+                        this.maxHp += 20;
+                        this.hp += 20;
+                        break;
+                    case 'attack':
+                        this.attack += 5;
+                        break;
+                    case 'defense':
+                        this.defense += 3;
+                        break;
+                    case 'heal':
+                        this.hp = this.maxHp;
+                        break;
+                }
+            }
+        }
+
+        // Enemy Class
+        class Enemy {
+            constructor(x, y, level) {
+                this.x = x;
+                this.y = y;
+                this.hp = 20 + level * 10;
+                this.maxHp = this.hp;
+                this.attack = 5 + level * 2;
+                this.defense = 2 + level;
+                this.xp = 20 + level * 10;
+                this.gold = 10 + level * 5;
+                this.type = Math.random() > 0.7 ? 'strong' : 'normal';
+                
+                if (this.type === 'strong') {
+                    this.hp = Math.floor(this.hp * 1.5);
+                    this.maxHp = this.hp;
+                    this.attack = Math.floor(this.attack * 1.5);
+                    this.xp *= 2;
+                    this.gold *= 2;
+                }
+            }
+
+            move() {
+                const dx = game.player.x - this.x;
+                const dy = game.player.y - this.y;
+                const dist = Math.abs(dx) + Math.abs(dy);
+
+                if (dist < 6 && dist > 1) {
+                    const moveX = dx !== 0 ? Math.sign(dx) : 0;
+                    const moveY = dy !== 0 ? Math.sign(dy) : 0;
+
+                    if (Math.random() > 0.5 && moveX !== 0) {
+                        const newX = this.x + moveX;
+                        if (newX >= 0 && newX < config.gridWidth && 
+                            game.grid[this.y][newX] === 0 &&
+                            !game.enemies.some(e => e.x === newX && e.y === this.y && e !== this)) {
+                            this.x = newX;
+                            return;
+                        }
+                    }
+
+                    if (moveY !== 0) {
+                        const newY = this.y + moveY;
+                        if (newY >= 0 && newY < config.gridHeight && 
+                            game.grid[newY][this.x] === 0 &&
+                            !game.enemies.some(e => e.x === this.x && e.y === newY && e !== this)) {
+                            this.y = newY;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Item Class
+        class Item {
+            constructor(x, y, type, value) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.value = value;
+            }
+        }
+
+        // Initialize Game
+        function initGame() {
+            game.player = new Player();
+            generateLevel();
+            
+            const canvas = document.getElementById('gameCanvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            gameLoop();
+        }
+
+        // Generate Level
+        function generateLevel() {
+            game.grid = [];
+            game.enemies = [];
+            game.items = [];
+
+            for (let y = 0; y < config.gridHeight; y++) {
+                game.grid[y] = [];
+                for (let x = 0; x < config.gridWidth; x++) {
+                    if (x === 0 || x === config.gridWidth - 1 || y === 0 || y === config.gridHeight - 1) {
+                        game.grid[y][x] = 1;
+                    } else {
+                        game.grid[y][x] = Math.random() > 0.85 ? 1 : 0;
+                    }
+                }
+            }
+
+            game.player.x = 5;
+            game.player.y = config.gridHeight - 2;
+            game.grid[game.player.y][game.player.x] = 0;
+
+            game.stairs = {
+                x: Math.floor(Math.random() * (config.gridWidth - 4)) + 2,
+                y: 2
+            };
+            game.grid[game.stairs.y][game.stairs.x] = 0;
+
+            const enemyCount = 3 + game.level * 2;
+            for (let i = 0; i < enemyCount; i++) {
+                let x, y;
+                let attempts = 0;
+                do {
+                    x = Math.floor(Math.random() * (config.gridWidth - 4)) + 2;
+                    y = Math.floor(Math.random() * (config.gridHeight - 6)) + 3;
+                    attempts++;
+                } while ((game.grid[y][x] === 1 || 
+                         (x === game.player.x && y === game.player.y) ||
+                         (x === game.stairs.x && y === game.stairs.y)) && attempts < 50);
+                
+                if (attempts < 50) {
+                    game.enemies.push(new Enemy(x, y, game.level));
+                }
+            }
+
+            const itemCount = 5 + game.level;
+            for (let i = 0; i < itemCount; i++) {
+                let x, y;
+                let attempts = 0;
+                do {
+                    x = Math.floor(Math.random() * (config.gridWidth - 4)) + 2;
+                    y = Math.floor(Math.random() * (config.gridHeight - 6)) + 3;
+                    attempts++;
+                } while (game.grid[y][x] === 1 && attempts < 50);
+                
+                if (attempts < 50) {
+                    const type = Math.random() > 0.7 ? 'health' : 'gold';
+                    const value = type === 'gold' ? (10 + Math.floor(Math.random() * 20)) : (20 + Math.floor(Math.random() * 30));
+                    game.items.push(new Item(x, y, type, value));
+                }
+            }
+        }
+
+        // Game Loop
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Update
+        function update() {
+            if (game.turns % 2 === 0) {
+                game.enemies.forEach(enemy => {
+                    if (enemy.hp > 0) {
+                        enemy.move();
+                    }
+                });
+            }
+            
+            updateStats();
+        }
+
+        // Render
+        function render() {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const tileSize = Math.min(
+                canvas.width / config.gridWidth,
+                (canvas.height - 100) / config.gridHeight
+            );
+
+            const offsetX = (canvas.width - config.gridWidth * tileSize) / 2;
+            const offsetY = (canvas.height - config.gridHeight * tileSize) / 2;
+
+            for (let y = 0; y < config.gridHeight; y++) {
+                for (let x = 0; x < config.gridWidth; x++) {
+                    if (game.grid[y][x] === 1) {
+                        ctx.fillStyle = '#fff';
+                        ctx.fillRect(
+                            offsetX + x * tileSize,
+                            offsetY + y * tileSize,
+                            tileSize - 1,
+                            tileSize - 1
+                        );
+                    }
+                }
+            }
+
+            if (game.stairs) {
+                ctx.fillStyle = '#666';
+                ctx.fillRect(
+                    offsetX + game.stairs.x * tileSize + 2,
+                    offsetY + game.stairs.y * tileSize + 2,
+                    tileSize - 4,
+                    tileSize - 4
+                );
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(
+                    offsetX + game.stairs.x * tileSize + 2,
+                    offsetY + game.stairs.y * tileSize + 2,
+                    tileSize - 4,
+                    tileSize - 4
+                );
+            }
+
+            game.items.forEach(item => {
+                ctx.fillStyle = item.type === 'gold' ? '#fff' : '#999';
+                ctx.beginPath();
+                ctx.arc(
+                    offsetX + item.x * tileSize + tileSize / 2,
+                    offsetY + item.y * tileSize + tileSize / 2,
+                    tileSize / 4,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+            });
+
+            game.enemies.forEach(enemy => {
+                if (enemy.hp > 0) {
+                    ctx.fillStyle = enemy.type === 'strong' ? '#fff' : '#666';
+                    ctx.fillRect(
+                        offsetX + enemy.x * tileSize + 4,
+                        offsetY + enemy.y * tileSize + 4,
+                        tileSize - 8,
+                        tileSize - 8
+                    );
+                    
+                    const hpPercent = enemy.hp / enemy.maxHp;
+                    ctx.fillStyle = '#fff';
+                    ctx.fillRect(
+                        offsetX + enemy.x * tileSize + 2,
+                        offsetY + enemy.y * tileSize,
+                        (tileSize - 4) * hpPercent,
+                        3
+                    );
+                }
+            });
+
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(
+                offsetX + game.player.x * tileSize + 4,
+                offsetY + game.player.y * tileSize + 4,
+                tileSize - 8,
+                tileSize - 8
+            );
+            
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(
+                offsetX + game.player.x * tileSize + 8,
+                offsetY + game.player.y * tileSize + 8,
+                tileSize - 16,
+                tileSize - 16
+            );
+        }
+
+        // Update Stats Display
+        function updateStats() {
+            const stats = document.getElementById('stats');
+            stats.innerHTML = `
+                HP: ${game.player.hp}/${game.player.maxHp}<br>
+                LVL: ${game.player.level}<br>
+                ATK: ${game.player.attack}<br>
+                DEF: ${game.player.defense}<br>
+                GOLD: ${game.gold}<br>
+                FLOOR: ${game.level}
+            `;
+        }
+
+        // Touch Controls
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            if (e.target.id === 'gameCanvas') {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }
+        });
+
+        document.addEventListener('touchend', (e) => {
+            if (e.target.id === 'gameCanvas') {
+                const touchEndX = e.changedTouches[0].clientX;
+                const touchEndY = e.changedTouches[0].clientY;
+                const dx = touchEndX - touchStartX;
+                const dy = touchEndY - touchStartY;
+                
+                if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 30) {
+                    if (dx > 0) playerMove(1, 0);
+                    else playerMove(-1, 0);
+                } else if (Math.abs(dy) > 30) {
+                    if (dy > 0) playerMove(0, 1);
+                    else playerMove(0, -1);
+                }
+            }
+        });
+
+        // Keyboard Controls
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                    playerMove(0, -1);
+                    e.preventDefault();
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                    playerMove(0, 1);
+                    e.preventDefault();
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                    playerMove(-1, 0);
+                    e.preventDefault();
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                    playerMove(1, 0);
+                    e.preventDefault();
+                    break;
+            }
+        });
+
+        function handleControl(direction) {
+            stopControl();
+            game.currentControl = direction;
+            
+            const moveOnce = () => {
+                switch(direction) {
+                    case 'up': playerMove(0, -1); break;
+                    case 'down': playerMove(0, 1); break;
+                    case 'left': playerMove(-1, 0); break;
+                    case 'right': playerMove(1, 0); break;
+                }
+            };
+            
+            moveOnce();
+            game.controlInterval = setInterval(() => {
+                if (game.currentControl === direction) {
+                    moveOnce();
+                }
+            }, 150);
+        }
+
+        function stopControl() {
+            game.currentControl = null;
+            if (game.controlInterval) {
+                clearInterval(game.controlInterval);
+                game.controlInterval = null;
+            }
+        }
+
+        function playerMove(dx, dy) {
+            if (game.player && game.player.move(dx, dy)) {
+                game.turns++;
+            }
+        }
+
+        // Upgrade Screen
+        function showUpgradeScreen() {
+            document.getElementById('gameScreen').style.display = 'none';
+            document.getElementById('upgradeScreen').classList.add('active');
+            
+            const upgrades = [
+                { id: 'health', name: '❤️ Max Health +20', desc: 'Increase maximum HP and restore 20 HP' },
+                { id: 'attack', name: '⚔️ Attack +5', desc: 'Deal more damage to enemies' },
+                { id: 'defense', name: '🛡️ Defense +3', desc: 'Reduce damage taken from enemies' },
+                { id: 'heal', name: '✨ Full Heal', desc: 'Restore all HP instantly' }
+            ];
+
+            const upgradeList = document.getElementById('upgradeList');
+            upgradeList.innerHTML = '';
+            
+            upgrades.forEach(upgrade => {
+                const div = document.createElement('div');
+                div.className = 'upgrade-item';
+                div.innerHTML = `
+                    <h3>${upgrade.name}</h3>
+                    <p>${upgrade.desc}</p>
+                    <button class="btn" onclick="selectUpgrade('${upgrade.id}')">SELECT</button>
+                `;
+                upgradeList.appendChild(div);
+            });
+        }
+
+        function selectUpgrade(upgrade) {
+            game.player.applyUpgrade(upgrade);
+            document.getElementById('upgradeScreen').classList.remove('active');
+            document.getElementById('gameScreen').style.display = 'block';
+        }
+
+        // Next Level
+        function nextLevel() {
+            game.level++;
+            generateLevel();
+        }
+
+        // Game Over
+        function gameOver() {
+            document.getElementById('gameScreen').style.display = 'none';
+            document.getElementById('gameOverScreen').classList.add('active');
+            document.getElementById('finalStats').innerHTML = `
+                <strong>Floor Reached:</strong> ${game.level}<br>
+                <strong>Player Level:</strong> ${game.player.level}<br>
+                <strong>Gold Collected:</strong> ${game.gold}
+            `;
+        }
+
+        // UI Functions
+        function startGame() {
+            document.getElementById('startScreen').classList.remove('active');
+            document.getElementById('gameScreen').style.display = 'block';
+            initGame();
+        }
+
+        function showInstructions() {
+            document.getElementById('startScreen').classList.remove('active');
+            document.getElementById('instructionsScreen').classList.add('active');
+        }
+
+        function hideInstructions() {
+            document.getElementById('instructionsScreen').classList.remove('active');
+            document.getElementById('startScreen').classList.add('active');
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const canvas = document.getElementById('gameCanvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Service Worker Registration (for PWA)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(() => {
+                    console.log('Service Worker registration failed (optional)');
+                });
+            });
+        }
+    </script>
+</body>
+</html>
